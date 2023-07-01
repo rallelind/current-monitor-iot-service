@@ -1,0 +1,11 @@
+[package]
+name = "current-iot-service"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aws-config = "0.55.3"
+aws-sdk-iot = "0.28.0"
+axum = "0.6.18"
