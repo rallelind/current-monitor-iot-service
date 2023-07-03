@@ -9,9 +9,13 @@ extern crate paho_mqtt as mqtt;
 
 const DFLT_BROKER:&str = "broker.emqx.io";
 const DFLT_CLIENT:&str = "rust_subscribe";
-const DFLT_TOPICS:&[&str] = &["rust/mqtt", "rust/test"];
+const DFLT_TOPICS:&str = &"rust/mqtt";
 // The qos list that match topics above.
-const DFLT_QOS:&[i32] = &[0, 1];
+const DFLT_QOS:&i32 = &1;
+
+mod services;
+
+use services::mqtt_service::MqttService;
 
 // Reconnect to the broker when connection is lost.
 fn try_reconnect(cli: &mqtt::Client) -> bool
@@ -30,7 +34,7 @@ fn try_reconnect(cli: &mqtt::Client) -> bool
 
 // Subscribes to multiple topics.
 fn subscribe_topics(cli: &mqtt::Client) {
-    if let Err(e) = cli.subscribe_many(DFLT_TOPICS, DFLT_QOS) {
+    if let Err(e) = cli.subscribe(DFLT_TOPICS, *DFLT_QOS) {
         println!("Error subscribes topics: {:?}", e);
         process::exit(1);
     }
@@ -95,7 +99,7 @@ fn main() {
     // If still connected, then disconnect now.
     if cli.is_connected() {
         println!("Disconnecting");
-        cli.unsubscribe_many(DFLT_TOPICS).unwrap();
+        cli.unsubscribe(DFLT_TOPICS).unwrap();
         cli.disconnect(None).unwrap();
     }
     println!("Exiting");
