@@ -4,6 +4,7 @@ mod repository;
 
 use services::mqtt_service::connect_mqtt;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     connect_mqtt()
 }
