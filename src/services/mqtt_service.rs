@@ -1,61 +1,102 @@
-const DFLT_BROKER: &str = "broker.emqx.io";
-const DFLT_CLIENT: &str = "rust_subscribe";
-const DFLT_TOPICS: &str = &"rust/mqtt";
-const DFLT_QOS: &i32 = &1;
-
-use std::{env, process, thread, time::Duration};
+use std::{
+    env,
+    process,
+    thread,
+    time::Duration
+};
 
 extern crate paho_mqtt as mqtt;
 
-use mqtt::{Client, CreateOptionsBuilder};
+const DFLT_BROKER:&str = "broker.emqx.io";
+const DFLT_CLIENT:&str = "rust_subscribe";
+const DFLT_TOPICS:&str = &"rust/mqtt";
+// The qos list that match topics above.
+const DFLT_QOS:&i32 = &1;
 
-pub struct MqttService {
-    pub mqtt_client: Client,
+// Reconnect to the broker when connection is lost.
+fn try_reconnect(cli: &mqtt::Client) -> bool
+{
+    println!("Connection lost. Waiting to retry connection");
+    for _ in 0..12 {
+        thread::sleep(Duration::from_millis(5000));
+        if cli.reconnect().is_ok() {
+            println!("Successfully reconnected");
+            return true;
+        }
+    }
+    println!("Unable to reconnect after several attempts.");
+    false
 }
 
-impl MqttService {
-    pub fn new() -> Self {
+// Subscribes to multiple topics.
+fn subscribe_topics(cli: &mqtt::Client) {
+    if let Err(e) = cli.subscribe(DFLT_TOPICS, *DFLT_QOS) {
+        println!("Error subscribes topics: {:?}", e);
+        process::exit(1);
+    }
+}
 
-        let client_builder_options = CreateOptionsBuilder::new()
-            .server_uri(DFLT_BROKER.to_string())
-            .client_id(DFLT_CLIENT.to_string())
-            .finalize();
+pub fn connect_mqtt() {
+    let host = env::args().nth(1).unwrap_or_else(||
+        DFLT_BROKER.to_string()
+    );
 
-        let mqtt_client = Client::new(client_builder_options).unwrap_or_else(|err| {
-            println!("Error creating client: {:?}", err);
-            process::exit(1);
-        });
+    // Define the set of options for the create.
+    // Use an ID for a persistent session.
+    let create_opts = mqtt::CreateOptionsBuilder::new()
+        .server_uri(host)
+        .client_id(DFLT_CLIENT.to_string())
+        .finalize();
 
-        
+    // Create a client.
+    let mut cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
+        println!("Error creating the client: {:?}", err);
+        process::exit(1);
+    });
 
-        MqttService { mqtt_client }
+    // Initialize the consumer before connecting.
+    let rx = cli.start_consuming();
+
+    // Define the set of options for the connection.
+    let lwt = mqtt::MessageBuilder::new()
+        .topic("test")
+        .payload("Consumer lost connection")
+        .finalize();
+    let conn_opts = mqtt::ConnectOptionsBuilder::new()
+        .keep_alive_interval(Duration::from_secs(20))
+        .clean_session(false)
+        .will_message(lwt)
+        .finalize();
+
+    // Connect and wait for it to complete or fail.
+    if let Err(e) = cli.connect(conn_opts) {
+        println!("Unable to connect:\n\t{:?}", e);
+        process::exit(1);
     }
 
-    fn subscribe_topics(&self) {
-        if let Err(e) = self.mqtt_client.subscribe(DFLT_TOPICS, *DFLT_QOS) {
-            println!("Error subscribes topics: {:?}", e);
-            process::exit(1);
+    // Subscribe topics.
+    subscribe_topics(&cli);
+
+    println!("Processing requests...");
+    for msg in rx.iter() {
+        if let Some(msg) = msg {
+            println!("{}", msg);
         }
-    }
-
-    fn reconnect(&self) -> bool {
-        println!("Connection lost. Reconnecting!");
-        for _ in 0..12 {
-            thread::sleep(Duration::from_millis(5000));
-            if self.mqtt_client.reconnect().is_ok() {
-                println!("Reconnected!");
-                return true;
+        else if !cli.is_connected() {
+            if try_reconnect(&cli) {
+                println!("Resubscribe topics...");
+                subscribe_topics(&cli);
+            } else {
+                break;
             }
         }
-        println!("Could not reconnect");
-        false
     }
 
-    pub fn disconnect(&self) {
-        if self.mqtt_client.is_connected() {
-            println!("Disconnecting mqtt client!");
-            self.mqtt_client.unsubscribe(DFLT_TOPICS).unwrap();
-            self.mqtt_client.disconnect(None).unwrap();
-        }
+    // If still connected, then disconnect now.
+    if cli.is_connected() {
+        println!("Disconnecting");
+        cli.unsubscribe(DFLT_TOPICS).unwrap();
+        cli.disconnect(None).unwrap();
     }
+    println!("Exiting");
 }
