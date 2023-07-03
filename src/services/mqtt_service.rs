@@ -4,9 +4,9 @@ use std::{
     thread,
     time::Duration,
 };
-use serde_json::{from_str, Value};
+use serde_json::from_str;
 
-use crate::{models::mqtt_message_model::MqttMessage};
+use crate::models::mqtt_message_model::MqttMessage;
 
 extern crate paho_mqtt as mqtt;
 
