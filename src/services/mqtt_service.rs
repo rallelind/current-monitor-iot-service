@@ -2,8 +2,11 @@ use std::{
     env,
     process,
     thread,
-    time::Duration
+    time::Duration,
 };
+use serde_json::{from_str, Value};
+
+use crate::{models::mqtt_message_model::MqttMessage};
 
 extern crate paho_mqtt as mqtt;
 
@@ -49,7 +52,7 @@ pub fn connect_mqtt() {
         .finalize();
 
     // Create a client.
-    let mut cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
+    let cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
         println!("Error creating the client: {:?}", err);
         process::exit(1);
     });
@@ -80,7 +83,19 @@ pub fn connect_mqtt() {
     println!("Processing requests...");
     for msg in rx.iter() {
         if let Some(msg) = msg {
-            println!("{}", msg);
+
+            let msg_string = msg.to_string();
+            let start = msg_string.find("{");
+            let end = msg_string.find("}");
+
+            let json_string = match (start, end) {
+                (Some(start), Some(end)) => &msg_string[start..=end],
+                _ => "",
+            };
+
+            let json_value: MqttMessage = from_str(json_string).unwrap();
+
+            println!("{:?}", json_value);
         }
         else if !cli.is_connected() {
             if try_reconnect(&cli) {
