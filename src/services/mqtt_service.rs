@@ -5,9 +5,8 @@ use std::{
     time::Duration,
 };
 use serde_json::from_str;
-use mongodb::bson::DateTime;
 
-use crate::models::current_model::CurrentMonitor;
+use crate::{models::current_model::CurrentMonitor, repository::mongodb_db_repo::MongoRepo};
 
 extern crate paho_mqtt as mqtt;
 
@@ -40,7 +39,7 @@ fn subscribe_topics(cli: &mqtt::Client) {
     }
 }
 
-pub fn connect_mqtt() {
+pub async fn connect_mqtt(mongo_db: MongoRepo) {
     let host = env::args().nth(1).unwrap_or_else(||
         DFLT_BROKER.to_string()
     );
@@ -95,6 +94,8 @@ pub fn connect_mqtt() {
             };
 
             let json_value: CurrentMonitor = from_str(json_string).unwrap();
+
+            mongo_db.process_current_data(json_value.clone()).await;
 
             println!("{:?}", json_value);
         }

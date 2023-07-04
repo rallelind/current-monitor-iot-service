@@ -12,6 +12,8 @@ impl MongoRepo {
         let mongo_connection_string =
             var("MONGO_CONNECTION_STRING").expect("failed to read mongo connection string");
 
+        println!("{}", mongo_connection_string);
+
         let client = Client::with_uri_str(mongo_connection_string)
             .await
             .expect("error connection to client");
@@ -19,7 +21,7 @@ impl MongoRepo {
         let db = client.database("current_monitor");
 
         let current_monitor_collection: Collection<CurrentMonitor> =
-            db.collection("current_monitor");
+            db.collection("current_data");
 
         MongoRepo {
             current_monitor_collection,
