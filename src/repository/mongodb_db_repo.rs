@@ -12,8 +12,6 @@ impl MongoRepo {
         let mongo_connection_string =
             var("MONGO_CONNECTION_STRING").expect("failed to read mongo connection string");
 
-        println!("{}", mongo_connection_string);
-
         let client = Client::with_uri_str(mongo_connection_string)
             .await
             .expect("error connection to client");
