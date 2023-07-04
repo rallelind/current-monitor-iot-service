@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 axum = "0.6.18"
+chrono = "0.4.26"
 dotenv = "0.15.0"
 mongodb = "2.6.0"
 paho-mqtt = "0.12.1"

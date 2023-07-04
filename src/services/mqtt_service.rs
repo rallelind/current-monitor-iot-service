@@ -6,7 +6,7 @@ use std::{
 };
 use serde_json::from_str;
 
-use crate::models::mqtt_message_model::MqttMessage;
+use crate::models::current_model::CurrentMonitor;
 
 extern crate paho_mqtt as mqtt;
 
@@ -93,7 +93,7 @@ pub fn connect_mqtt() {
                 _ => "",
             };
 
-            let json_value: MqttMessage = from_str(json_string).unwrap();
+            let json_value: CurrentMonitor = from_str(json_string).unwrap();
 
             println!("{:?}", json_value);
         }
